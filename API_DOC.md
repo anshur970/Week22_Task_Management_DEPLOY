@@ -1,31 +1,85 @@
 # Task Management API Documentation
 
-## Base URL
+> **Version:** 1.0  
+> **Last Updated:** 2024  
+> **Documentation for:** Frontend Development Team
 
-**Development:** `http://localhost:3000`  
-**Production:** `https://your-app-name.onrender.com` (Update with your actual Render.com URL)
+---
 
-All API endpoints are prefixed with `/api`
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Base URL & Environment](#base-url--environment)
+3. [Authentication](#authentication)
+4. [Response Format](#response-format)
+5. [HTTP Status Codes](#http-status-codes)
+6. [Authentication Endpoints](#authentication-endpoints)
+7. [Task Endpoints](#task-endpoints)
+8. [Subtask Endpoints](#subtask-endpoints)
+9. [Data Models](#data-models)
+10. [Postman Collection Setup](#postman-collection-setup)
+
+---
+
+## Overview
+
+This is a RESTful API for managing tasks and subtasks. The API uses **JWT (JSON Web Token)** authentication for secure access to protected endpoints.
+
+### Key Features
+
+- User registration and authentication
+- Task CRUD operations
+- Subtask management
+- User-specific data isolation
+- RESTful architecture
+
+---
+
+## Base URL & Environment
+
+### Development
+```
+http://localhost:3000
+```
+
+### Production
+```
+https://your-app-name.onrender.com
+```
+*Note: Update with your actual production URL*
+
+### API Prefix
+All endpoints are prefixed with `/api`
+
+**Example:** `http://localhost:3000/api/auth/register`
 
 ---
 
 ## Authentication
 
-This API uses **JWT (JSON Web Token)** authentication. Most endpoints require authentication.
+This API uses **JWT (JSON Web Token)** authentication. Most endpoints require authentication except for registration and login.
 
 ### How to Authenticate
 
-1. Register a new user or login to get an access token
+1. **Register a new user** or **Login** to receive an access token
 2. Include the token in the `Authorization` header for all protected requests:
    ```
    Authorization: Bearer <your-token-here>
    ```
 
-### Token Expiration
+### Token Details
 
-- Tokens expire after **24 hours**
-- If a token expires, you'll receive a `401 Unauthorized` response
-- Users must login again to get a new token
+- **Token Type:** JWT
+- **Expiration:** 24 hours
+- **Header Format:** `Bearer <token>`
+- **Storage:** Store token securely (localStorage, sessionStorage, or httpOnly cookies)
+
+### Token Expiration Handling
+
+If a token expires or is invalid, you'll receive a `401 Unauthorized` response. The frontend should:
+- Prompt the user to login again
+- Clear stored tokens
+- Redirect to login page if needed
 
 ---
 
@@ -34,15 +88,17 @@ This API uses **JWT (JSON Web Token)** authentication. Most endpoints require au
 All API responses follow a consistent format:
 
 ### Success Response
+
 ```json
 {
   "success": true,
   "data": { ... },
-  "count": 0  // Only present for list endpoints
+  "count": 0  // Only present for list endpoints (GET all tasks/subtasks)
 }
 ```
 
 ### Error Response
+
 ```json
 {
   "success": false,
@@ -51,18 +107,20 @@ All API responses follow a consistent format:
 }
 ```
 
+**Important:** Always check the `success` field in responses. Even with a `200` status code, check for `success: false` in the response body.
+
 ---
 
 ## HTTP Status Codes
 
-| Code | Description |
-|------|-------------|
-| 200 | OK - Successful GET, PUT, DELETE operations |
-| 201 | Created - Successful POST operations (resource creation) |
-| 400 | Bad Request - Validation errors or invalid input |
-| 401 | Unauthorized - Missing or invalid authentication token |
-| 404 | Not Found - Resource doesn't exist |
-| 500 | Internal Server Error - Server-side errors |
+| Code | Description | When to Expect |
+|------|-------------|----------------|
+| `200` | OK | Successful GET, PUT, DELETE operations |
+| `201` | Created | Successful POST operations (resource creation) |
+| `400` | Bad Request | Validation errors, missing required fields, invalid input |
+| `401` | Unauthorized | Missing, invalid, or expired authentication token |
+| `404` | Not Found | Resource doesn't exist or user doesn't have access |
+| `500` | Internal Server Error | Server-side errors |
 
 ---
 
@@ -70,23 +128,44 @@ All API responses follow a consistent format:
 
 ### 1. Register User
 
-Create a new user account.
+Create a new user account and receive an authentication token.
 
 **Endpoint:** `POST /api/auth/register`
 
 **Authentication:** Not required
 
-**Request Body:**
+**Headers:**
+```
+Content-Type: application/json
+```
+
+**Request Body (Required Fields):**
+
+| Field | Type | Required | Description | Example |
+|-------|------|----------|-------------|---------|
+| `name` | string | ✅ Yes | User's full name | `"John Doe"` |
+| `email` | string | ✅ Yes | Unique email address | `"john@example.com"` |
+| `password` | string | ✅ Yes | User password (will be hashed) | `"securePassword123"` |
+| `role` | string | ✅ Yes | User role | `"USER"` or `"ADMIN"` |
+
+**Request Body Example:**
 ```json
 {
   "name": "John Doe",
   "email": "john@example.com",
   "password": "securePassword123",
-  "role": "USER"  // Optional: "USER" or "ADMIN" (defaults to "USER")
+  "role": "USER"
 }
 ```
 
-**Response:** `201 Created`
+**Postman Setup:**
+- **Method:** `POST`
+- **URL:** `{{baseUrl}}/api/auth/register`
+- **Headers:** `Content-Type: application/json`
+- **Body:** Select `raw` → `JSON`, paste the request body above
+
+**Success Response:** `201 Created`
+
 ```json
 {
   "success": true,
@@ -98,14 +177,14 @@ Create a new user account.
       "email": "john@example.com",
       "role": "USER"
     },
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbHgxMjM0NTY3ODkwIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3MDc5MzI0MDAsImV4cCI6MTcwODAxODgwMH0..."
   }
 }
 ```
 
 **Error Responses:**
 
-- `400 Bad Request` - Missing required fields
+**400 Bad Request** - Missing required fields
 ```json
 {
   "success": false,
@@ -113,7 +192,7 @@ Create a new user account.
 }
 ```
 
-- `400 Bad Request` - Email already exists
+**400 Bad Request** - Email already exists
 ```json
 {
   "success": false,
@@ -121,7 +200,7 @@ Create a new user account.
 }
 ```
 
-- `400 Bad Request` - Invalid role
+**400 Bad Request** - Invalid role
 ```json
 {
   "success": false,
@@ -133,13 +212,25 @@ Create a new user account.
 
 ### 2. Login
 
-Authenticate and receive an access token.
+Authenticate an existing user and receive an access token.
 
 **Endpoint:** `POST /api/auth/login`
 
 **Authentication:** Not required
 
-**Request Body:**
+**Headers:**
+```
+Content-Type: application/json
+```
+
+**Request Body (Required Fields):**
+
+| Field | Type | Required | Description | Example |
+|-------|------|----------|-------------|---------|
+| `email` | string | ✅ Yes | User's email address | `"john@example.com"` |
+| `password` | string | ✅ Yes | User password | `"securePassword123"` |
+
+**Request Body Example:**
 ```json
 {
   "email": "john@example.com",
@@ -147,7 +238,14 @@ Authenticate and receive an access token.
 }
 ```
 
-**Response:** `200 OK`
+**Postman Setup:**
+- **Method:** `POST`
+- **URL:** `{{baseUrl}}/api/auth/login`
+- **Headers:** `Content-Type: application/json`
+- **Body:** Select `raw` → `JSON`, paste the request body above
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -161,14 +259,14 @@ Authenticate and receive an access token.
       "createdAt": "2024-01-15T10:30:00.000Z",
       "updatedAt": "2024-01-15T10:30:00.000Z"
     },
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbHgxMjM0NTY3ODkwIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3MDc5MzI0MDAsImV4cCI6MTcwODAxODgwMH0..."
   }
 }
 ```
 
 **Error Responses:**
 
-- `400 Bad Request` - Missing fields
+**400 Bad Request** - Missing fields
 ```json
 {
   "success": false,
@@ -176,7 +274,7 @@ Authenticate and receive an access token.
 }
 ```
 
-- `401 Unauthorized` - Invalid credentials
+**401 Unauthorized** - Invalid credentials
 ```json
 {
   "success": false,
@@ -192,14 +290,26 @@ Get the authenticated user's profile information.
 
 **Endpoint:** `GET /api/auth/me`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
 Authorization: Bearer <token>
 ```
 
-**Response:** `200 OK`
+**URL Parameters:** None
+
+**Query Parameters:** None
+
+**Postman Setup:**
+- **Method:** `GET`
+- **URL:** `{{baseUrl}}/api/auth/me`
+- **Headers:** 
+  - `Authorization: Bearer {{token}}`
+  - (Replace `{{token}}` with your actual token or use Postman environment variable)
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -214,13 +324,30 @@ Authorization: Bearer <token>
 }
 ```
 
-**Error Response:**
+**Error Responses:**
 
-- `401 Unauthorized` - Invalid or missing token
+**401 Unauthorized** - Missing token
 ```json
 {
   "success": false,
   "message": "Access token required"
+}
+```
+
+**401 Unauthorized** - Invalid/expired token
+```json
+{
+  "success": false,
+  "message": "Invalid token"
+}
+```
+
+or
+
+```json
+{
+  "success": false,
+  "message": "Token expired"
 }
 ```
 
@@ -236,14 +363,24 @@ Retrieve all tasks for the authenticated user.
 
 **Endpoint:** `GET /api/tasks`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
 Authorization: Bearer <token>
 ```
 
-**Response:** `200 OK`
+**URL Parameters:** None
+
+**Query Parameters:** None
+
+**Postman Setup:**
+- **Method:** `GET`
+- **URL:** `{{baseUrl}}/api/tasks`
+- **Headers:** `Authorization: Bearer {{token}}`
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -271,6 +408,19 @@ Authorization: Bearer <token>
           "updatedAt": "2024-01-15T12:00:00.000Z"
         }
       ]
+    },
+    {
+      "id": "clx9876543211",
+      "title": "Build frontend dashboard",
+      "description": "Create beautiful dashboard UI",
+      "status": "pending",
+      "priority": "urgent",
+      "dueDate": "2024-01-25T00:00:00.000Z",
+      "assignedTo": null,
+      "createdAt": "2024-01-16T08:00:00.000Z",
+      "updatedAt": "2024-01-16T08:00:00.000Z",
+      "userId": "clx1234567890",
+      "subtasks": []
     }
   ]
 }
@@ -278,7 +428,7 @@ Authorization: Bearer <token>
 
 **Error Response:**
 
-- `500 Internal Server Error`
+**500 Internal Server Error**
 ```json
 {
   "success": false,
@@ -294,7 +444,7 @@ Retrieve a specific task by its ID.
 
 **Endpoint:** `GET /api/tasks/:id`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
@@ -302,9 +452,20 @@ Authorization: Bearer <token>
 ```
 
 **URL Parameters:**
-- `id` (string, required) - The task ID
 
-**Response:** `200 OK`
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `id` | string | ✅ Yes | The task ID | `"clx9876543210"` |
+
+**Query Parameters:** None
+
+**Postman Setup:**
+- **Method:** `GET`
+- **URL:** `{{baseUrl}}/api/tasks/clx9876543210`
+- **Headers:** `Authorization: Bearer {{token}}`
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -326,7 +487,7 @@ Authorization: Bearer <token>
 
 **Error Responses:**
 
-- `404 Not Found` - Task doesn't exist or doesn't belong to user
+**404 Not Found** - Task doesn't exist or doesn't belong to user
 ```json
 {
   "success": false,
@@ -342,7 +503,7 @@ Create a new task.
 
 **Endpoint:** `POST /api/tasks`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
@@ -350,40 +511,70 @@ Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
-**Request Body:**
+**URL Parameters:** None
+
+**Request Body (Required Fields):**
+
+| Field | Type | Required | Description | Valid Values | Example |
+|-------|------|----------|-------------|--------------|---------|
+| `title` | string | ✅ Yes | Task title | Any string | `"Complete project documentation"` |
+| `description` | string | ✅ Yes | Task description | Any string | `"Write comprehensive API documentation"` |
+| `status` | string | ✅ Yes | Task status | `"pending"`, `"in_progress"`, `"completed"`, `"cancelled"` (or `"in-progress"` kebab-case) | `"pending"` |
+| `priority` | string | ✅ Yes | Task priority | `"low"`, `"medium"`, `"high"`, `"urgent"` | `"high"` |
+| `dueDate` | string (ISO 8601) | ❌ No | Due date for the task | ISO 8601 date string | `"2024-01-20T00:00:00.000Z"` |
+| `assignedTo` | string | ❌ No | Email or identifier of assignee | Any string | `"john@example.com"` |
+| `subtasks` | array | ❌ No | Array of subtask objects to create with task | Array of subtask objects | See example below |
+
+**Request Body Example (Minimal):**
+```json
+{
+  "title": "Complete project documentation",
+  "description": "Write comprehensive API documentation",
+  "status": "pending",
+  "priority": "high"
+}
+```
+
+**Request Body Example (With All Fields):**
 ```json
 {
   "title": "Complete project documentation",
   "description": "Write comprehensive API documentation",
   "status": "pending",
   "priority": "high",
-  "dueDate": "2024-01-20T00:00:00.000Z",  // Optional: ISO 8601 date string
-  "assignedTo": "john@example.com",  // Optional
-  "subtasks": [  // Optional: Create subtasks along with task
+  "dueDate": "2024-01-20T00:00:00.000Z",
+  "assignedTo": "john@example.com",
+  "subtasks": [
     {
       "title": "Review API endpoints",
       "description": "Check all endpoints",
+      "completed": false
+    },
+    {
+      "title": "Write examples",
+      "description": "Add request/response examples",
       "completed": false
     }
   ]
 }
 ```
 
-**Field Descriptions:**
+**Important Notes:**
+- Status can be sent as `"in-progress"` (kebab-case) and will be converted to `"in_progress"` (snake_case) automatically
+- Response will always return `"in_progress"` (snake_case)
+- `dueDate` must be in ISO 8601 format
+- Subtasks can be created along with the task by including them in the `subtasks` array
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `title` | string | Yes | Task title |
-| `description` | string | Yes | Task description |
-| `status` | string | Yes | One of: `"pending"`, `"in_progress"`, `"completed"`, `"cancelled"` |
-| `priority` | string | Yes | One of: `"low"`, `"medium"`, `"high"`, `"urgent"` |
-| `dueDate` | string (ISO 8601) | No | Due date for the task |
-| `assignedTo` | string | No | Email or identifier of assignee |
-| `subtasks` | array | No | Array of subtask objects to create |
+**Postman Setup:**
+- **Method:** `POST`
+- **URL:** `{{baseUrl}}/api/tasks`
+- **Headers:** 
+  - `Authorization: Bearer {{token}}`
+  - `Content-Type: application/json`
+- **Body:** Select `raw` → `JSON`, paste one of the request body examples above
 
-**Note:** Status can be sent as `"in-progress"` (kebab-case) and will be converted to `"in_progress"` (snake_case) automatically.
+**Success Response:** `201 Created`
 
-**Response:** `201 Created`
 ```json
 {
   "success": true,
@@ -398,14 +589,24 @@ Content-Type: application/json
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T10:30:00.000Z",
     "userId": "clx1234567890",
-    "subtasks": []
+    "subtasks": [
+      {
+        "id": "clx1111111111",
+        "title": "Review API endpoints",
+        "description": "Check all endpoints",
+        "completed": false,
+        "taskId": "clx9876543210",
+        "createdAt": "2024-01-15T10:30:00.000Z",
+        "updatedAt": "2024-01-15T10:30:00.000Z"
+      }
+    ]
   }
 }
 ```
 
 **Error Response:**
 
-- `400 Bad Request` - Validation error
+**400 Bad Request** - Validation error
 ```json
 {
   "success": false,
@@ -417,11 +618,11 @@ Content-Type: application/json
 
 ### 4. Update Task
 
-Update an existing task.
+Update an existing task. Only include fields you want to update.
 
 **Endpoint:** `PUT /api/tasks/:id`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
@@ -430,12 +631,33 @@ Content-Type: application/json
 ```
 
 **URL Parameters:**
-- `id` (string, required) - The task ID
 
-**Request Body:**
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `id` | string | ✅ Yes | The task ID | `"clx9876543210"` |
+
+**Request Body (All Fields Optional - only include what you want to update):**
+
+| Field | Type | Required | Description | Valid Values | Example |
+|-------|------|----------|-------------|--------------|---------|
+| `title` | string | ❌ No | Task title | Any string | `"Updated task title"` |
+| `description` | string | ❌ No | Task description | Any string | `"Updated description"` |
+| `status` | string | ❌ No | Task status | `"pending"`, `"in_progress"`, `"completed"`, `"cancelled"` (or `"in-progress"` kebab-case) | `"completed"` |
+| `priority` | string | ❌ No | Task priority | `"low"`, `"medium"`, `"high"`, `"urgent"` | `"medium"` |
+| `dueDate` | string (ISO 8601) | ❌ No | Due date for the task | ISO 8601 date string | `"2024-01-25T00:00:00.000Z"` |
+| `assignedTo` | string | ❌ No | Email or identifier of assignee | Any string | `"jane@example.com"` |
+
+**Request Body Example (Update Status Only):**
 ```json
 {
-  "title": "Updated task title",  // All fields optional - only include what you want to update
+  "status": "completed"
+}
+```
+
+**Request Body Example (Update Multiple Fields):**
+```json
+{
+  "title": "Updated task title",
   "description": "Updated description",
   "status": "completed",
   "priority": "medium",
@@ -444,7 +666,16 @@ Content-Type: application/json
 }
 ```
 
-**Response:** `200 OK`
+**Postman Setup:**
+- **Method:** `PUT`
+- **URL:** `{{baseUrl}}/api/tasks/clx9876543210`
+- **Headers:** 
+  - `Authorization: Bearer {{token}}`
+  - `Content-Type: application/json`
+- **Body:** Select `raw` → `JSON`, paste one of the request body examples above
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -466,7 +697,7 @@ Content-Type: application/json
 
 **Error Responses:**
 
-- `404 Not Found` - Task doesn't exist or doesn't belong to user
+**404 Not Found** - Task doesn't exist or doesn't belong to user
 ```json
 {
   "success": false,
@@ -474,7 +705,7 @@ Content-Type: application/json
 }
 ```
 
-- `400 Bad Request` - Validation error
+**400 Bad Request** - Validation error
 ```json
 {
   "success": false,
@@ -486,11 +717,11 @@ Content-Type: application/json
 
 ### 5. Delete Task
 
-Delete a task and all its subtasks.
+Delete a task and all its subtasks (cascade delete).
 
 **Endpoint:** `DELETE /api/tasks/:id`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
@@ -498,9 +729,22 @@ Authorization: Bearer <token>
 ```
 
 **URL Parameters:**
-- `id` (string, required) - The task ID
 
-**Response:** `200 OK`
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `id` | string | ✅ Yes | The task ID | `"clx9876543210"` |
+
+**Query Parameters:** None
+
+**Request Body:** None
+
+**Postman Setup:**
+- **Method:** `DELETE`
+- **URL:** `{{baseUrl}}/api/tasks/clx9876543210`
+- **Headers:** `Authorization: Bearer {{token}}`
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -520,9 +764,11 @@ Authorization: Bearer <token>
 }
 ```
 
+**Note:** The response returns the deleted task data. All associated subtasks are automatically deleted (cascade delete).
+
 **Error Responses:**
 
-- `404 Not Found` - Task doesn't exist or doesn't belong to user
+**404 Not Found** - Task doesn't exist or doesn't belong to user
 ```json
 {
   "success": false,
@@ -542,7 +788,7 @@ Retrieve all subtasks belonging to a specific task.
 
 **Endpoint:** `GET /api/tasks/:taskId/subtasks`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
@@ -550,9 +796,20 @@ Authorization: Bearer <token>
 ```
 
 **URL Parameters:**
-- `taskId` (string, required) - The parent task ID
 
-**Response:** `200 OK`
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `taskId` | string | ✅ Yes | The parent task ID | `"clx9876543210"` |
+
+**Query Parameters:** None
+
+**Postman Setup:**
+- **Method:** `GET`
+- **URL:** `{{baseUrl}}/api/tasks/clx9876543210/subtasks`
+- **Headers:** `Authorization: Bearer {{token}}`
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -582,7 +839,7 @@ Authorization: Bearer <token>
 
 **Error Responses:**
 
-- `404 Not Found` - Task doesn't exist or doesn't belong to user
+**404 Not Found** - Task doesn't exist or doesn't belong to user
 ```json
 {
   "success": false,
@@ -598,7 +855,7 @@ Retrieve a specific subtask by its ID.
 
 **Endpoint:** `GET /api/subtasks/:id`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
@@ -606,9 +863,20 @@ Authorization: Bearer <token>
 ```
 
 **URL Parameters:**
-- `id` (string, required) - The subtask ID
 
-**Response:** `200 OK`
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `id` | string | ✅ Yes | The subtask ID | `"clx1111111111"` |
+
+**Query Parameters:** None
+
+**Postman Setup:**
+- **Method:** `GET`
+- **URL:** `{{baseUrl}}/api/subtasks/clx1111111111`
+- **Headers:** `Authorization: Bearer {{token}}`
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -626,7 +894,7 @@ Authorization: Bearer <token>
 
 **Error Responses:**
 
-- `404 Not Found` - Subtask doesn't exist or doesn't belong to user's task
+**404 Not Found** - Subtask doesn't exist or doesn't belong to user's task
 ```json
 {
   "success": false,
@@ -642,7 +910,7 @@ Create a new subtask for a task.
 
 **Endpoint:** `POST /api/tasks/:taskId/subtasks`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
@@ -651,26 +919,45 @@ Content-Type: application/json
 ```
 
 **URL Parameters:**
-- `taskId` (string, required) - The parent task ID
 
-**Request Body:**
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `taskId` | string | ✅ Yes | The parent task ID | `"clx9876543210"` |
+
+**Request Body (Required Fields):**
+
+| Field | Type | Required | Description | Default | Example |
+|-------|------|----------|-------------|---------|---------|
+| `title` | string | ✅ Yes | Subtask title | - | `"Review API endpoints"` |
+| `description` | string | ❌ No | Subtask description | `null` | `"Check all endpoints"` |
+| `completed` | boolean | ❌ No | Completion status | `false` | `false` |
+
+**Request Body Example (Minimal):**
 ```json
 {
-  "title": "Review API endpoints",
-  "description": "Check all endpoints",  // Optional
-  "completed": false  // Optional, defaults to false
+  "title": "Review API endpoints"
 }
 ```
 
-**Field Descriptions:**
+**Request Body Example (With All Fields):**
+```json
+{
+  "title": "Review API endpoints",
+  "description": "Check all endpoints",
+  "completed": false
+}
+```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `title` | string | Yes | Subtask title |
-| `description` | string | No | Subtask description |
-| `completed` | boolean | No | Completion status (defaults to `false`) |
+**Postman Setup:**
+- **Method:** `POST`
+- **URL:** `{{baseUrl}}/api/tasks/clx9876543210/subtasks`
+- **Headers:** 
+  - `Authorization: Bearer {{token}}`
+  - `Content-Type: application/json`
+- **Body:** Select `raw` → `JSON`, paste one of the request body examples above
 
-**Response:** `201 Created`
+**Success Response:** `201 Created`
+
 ```json
 {
   "success": true,
@@ -688,7 +975,7 @@ Content-Type: application/json
 
 **Error Responses:**
 
-- `404 Not Found` - Task doesn't exist or doesn't belong to user
+**404 Not Found** - Task doesn't exist or doesn't belong to user
 ```json
 {
   "success": false,
@@ -696,7 +983,7 @@ Content-Type: application/json
 }
 ```
 
-- `400 Bad Request` - Validation error
+**400 Bad Request** - Validation error
 ```json
 {
   "success": false,
@@ -708,11 +995,11 @@ Content-Type: application/json
 
 ### 4. Update Subtask
 
-Update an existing subtask.
+Update an existing subtask. Only include fields you want to update.
 
 **Endpoint:** `PUT /api/subtasks/:id`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
@@ -721,18 +1008,45 @@ Content-Type: application/json
 ```
 
 **URL Parameters:**
-- `id` (string, required) - The subtask ID
 
-**Request Body:**
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `id` | string | ✅ Yes | The subtask ID | `"clx1111111111"` |
+
+**Request Body (All Fields Optional - only include what you want to update):**
+
+| Field | Type | Required | Description | Example |
+|-------|------|----------|-------------|---------|
+| `title` | string | ❌ No | Subtask title | `"Updated subtask title"` |
+| `description` | string | ❌ No | Subtask description | `"Updated description"` |
+| `completed` | boolean | ❌ No | Completion status | `true` |
+
+**Request Body Example (Update Completed Status Only):**
 ```json
 {
-  "title": "Updated subtask title",  // All fields optional
+  "completed": true
+}
+```
+
+**Request Body Example (Update Multiple Fields):**
+```json
+{
+  "title": "Updated subtask title",
   "description": "Updated description",
   "completed": true
 }
 ```
 
-**Response:** `200 OK`
+**Postman Setup:**
+- **Method:** `PUT`
+- **URL:** `{{baseUrl}}/api/subtasks/clx1111111111`
+- **Headers:** 
+  - `Authorization: Bearer {{token}}`
+  - `Content-Type: application/json`
+- **Body:** Select `raw` → `JSON`, paste one of the request body examples above
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -750,7 +1064,7 @@ Content-Type: application/json
 
 **Error Responses:**
 
-- `404 Not Found` - Subtask doesn't exist or doesn't belong to user's task
+**404 Not Found** - Subtask doesn't exist or doesn't belong to user's task
 ```json
 {
   "success": false,
@@ -758,7 +1072,7 @@ Content-Type: application/json
 }
 ```
 
-- `400 Bad Request` - Validation error
+**400 Bad Request** - Validation error
 ```json
 {
   "success": false,
@@ -774,7 +1088,7 @@ Delete a subtask.
 
 **Endpoint:** `DELETE /api/subtasks/:id`
 
-**Authentication:** Required
+**Authentication:** ✅ Required
 
 **Headers:**
 ```
@@ -782,9 +1096,22 @@ Authorization: Bearer <token>
 ```
 
 **URL Parameters:**
-- `id` (string, required) - The subtask ID
 
-**Response:** `200 OK`
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `id` | string | ✅ Yes | The subtask ID | `"clx1111111111"` |
+
+**Query Parameters:** None
+
+**Request Body:** None
+
+**Postman Setup:**
+- **Method:** `DELETE`
+- **URL:** `{{baseUrl}}/api/subtasks/clx1111111111`
+- **Headers:** `Authorization: Bearer {{token}}`
+
+**Success Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -800,9 +1127,11 @@ Authorization: Bearer <token>
 }
 ```
 
+**Note:** The response returns the deleted subtask data.
+
 **Error Responses:**
 
-- `404 Not Found` - Subtask doesn't exist or doesn't belong to user's task
+**404 Not Found** - Subtask doesn't exist or doesn't belong to user's task
 ```json
 {
   "success": false,
@@ -814,61 +1143,61 @@ Authorization: Bearer <token>
 
 ## Data Models
 
-### User
+### User Model
 
 ```typescript
 {
-  id: string;           // Unique identifier (CUID)
-  name: string;        // User's full name
-  email: string;       // Unique email address
-  password: string;    // Hashed password (never returned in responses)
-  role: "USER" | "ADMIN";  // User role
-  createdAt: Date;     // ISO 8601 timestamp
-  updatedAt: Date;     // ISO 8601 timestamp
+  id: string;           // Unique identifier (CUID) - Auto-generated
+  name: string;         // User's full name
+  email: string;        // Unique email address
+  password: string;     // Hashed password (never returned in responses)
+  role: "USER" | "ADMIN"; // User role
+  createdAt: Date;      // ISO 8601 timestamp - Auto-generated
+  updatedAt: Date;      // ISO 8601 timestamp - Auto-updated
 }
 ```
 
-### Task
+### Task Model
 
 ```typescript
 {
-  id: string;                    // Unique identifier (CUID)
+  id: string;                    // Unique identifier (CUID) - Auto-generated
   title: string;                 // Task title
   description: string;           // Task description
-  status: TaskStatus;            // Current status
-  priority: Priority;            // Priority level
+  status: TaskStatus;            // Current status (enum)
+  priority: Priority;            // Priority level (enum)
   dueDate: Date | null;          // Optional due date (ISO 8601)
   assignedTo: string | null;     // Optional assignee identifier
-  userId: string;                // Owner user ID
-  createdAt: Date;               // ISO 8601 timestamp
-  updatedAt: Date;               // ISO 8601 timestamp
-  subtasks: Subtask[];           // Array of subtasks
+  userId: string;                // Owner user ID - Auto-set from token
+  createdAt: Date;               // ISO 8601 timestamp - Auto-generated
+  updatedAt: Date;               // ISO 8601 timestamp - Auto-updated
+  subtasks: Subtask[];           // Array of subtasks (included in responses)
 }
 ```
 
-### Subtask
+### Subtask Model
 
 ```typescript
 {
-  id: string;          // Unique identifier (CUID)
+  id: string;          // Unique identifier (CUID) - Auto-generated
   title: string;       // Subtask title
   description: string; // Subtask description
-  completed: boolean;  // Completion status
+  completed: boolean;  // Completion status (default: false)
   taskId: string;      // Parent task ID
-  createdAt: Date;     // ISO 8601 timestamp
-  updatedAt: Date;     // ISO 8601 timestamp
+  createdAt: Date;     // ISO 8601 timestamp - Auto-generated
+  updatedAt: Date;     // ISO 8601 timestamp - Auto-updated
 }
 ```
 
 ### Enums
 
-**TaskStatus:**
+#### TaskStatus
 - `"pending"` - Task is pending
-- `"in_progress"` - Task is in progress
+- `"in_progress"` - Task is in progress (use `"in-progress"` kebab-case in requests, but response will be `"in_progress"`)
 - `"completed"` - Task is completed
 - `"cancelled"` - Task is cancelled
 
-**Priority:**
+#### Priority
 - `"low"` - Low priority
 - `"medium"` - Medium priority
 - `"high"` - High priority
@@ -876,128 +1205,334 @@ Authorization: Bearer <token>
 
 ---
 
-## Error Handling
+## Postman Collection Setup
 
-### Common Error Scenarios
+### Setting Up Postman Environment Variables
 
-1. **Missing Authentication Token**
-   - Status: `401 Unauthorized`
-   - Response: `{ "success": false, "message": "Access token required" }`
+1. **Create a new Environment** in Postman:
+   - Click the gear icon (⚙️) in the top right
+   - Click "Add" to create a new environment
+   - Name it "Task Management API"
 
-2. **Invalid or Expired Token**
-   - Status: `401 Unauthorized`
-   - Response: `{ "success": false, "message": "Invalid token" }` or `"Token expired"`
+2. **Add Variables:**
 
-3. **Resource Not Found**
-   - Status: `404 Not Found`
-   - Response: `{ "success": false, "error": "Task not found" }`
+   | Variable Name | Initial Value | Current Value | Description |
+   |---------------|---------------|---------------|-------------|
+   | `baseUrl` | `http://localhost:3000` | `http://localhost:3000` | API base URL (change for production) |
+   | `token` | (empty) | (empty) | JWT token (will be set after login) |
 
-4. **Validation Errors**
-   - Status: `400 Bad Request`
-   - Response: `{ "success": false, "error": "<error message>" }`
+3. **Using Variables in Requests:**
+   - Use `{{baseUrl}}` in the URL field: `{{baseUrl}}/api/auth/login`
+   - Use `{{token}}` in Authorization header: `Bearer {{token}}`
 
-5. **Server Errors**
-   - Status: `500 Internal Server Error`
-   - Response: `{ "success": false, "error": "<error message>" }`
+### Quick Setup Steps
 
----
+1. **Register/Login:**
+   - Run the `POST /api/auth/register` or `POST /api/auth/login` request
+   - Copy the `token` from the response
+   - Set it as the `token` environment variable:
+     - In Postman, go to the environment
+     - Paste the token in the `Current Value` column for `token`
 
-## Example Usage
+2. **Alternative: Use Tests Script to Auto-Save Token**
+   
+   Add this to the **Tests** tab of your Login/Register request:
+   ```javascript
+   if (pm.response.code === 200 || pm.response.code === 201) {
+       var jsonData = pm.response.json();
+       if (jsonData.data && jsonData.data.token) {
+           pm.environment.set("token", jsonData.data.token);
+           console.log("Token saved to environment variable");
+       }
+   }
+   ```
 
-### Complete Flow Example
+3. **Test Protected Endpoints:**
+   - All other endpoints will automatically use the `{{token}}` variable
+   - Make sure you've selected the correct environment in the top-right dropdown
 
-#### 1. Register a new user
-```bash
-POST /api/auth/register
-Content-Type: application/json
+### Postman Collection Structure (Recommended)
 
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "securePassword123",
-  "role": "USER"
-}
+Organize your requests into folders:
+
 ```
-
-#### 2. Login (if already registered)
-```bash
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "john@example.com",
-  "password": "securePassword123"
-}
-```
-
-#### 3. Create a task (using token from login/register)
-```bash
-POST /api/tasks
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-Content-Type: application/json
-
-{
-  "title": "Build frontend dashboard",
-  "description": "Create a beautiful dashboard UI",
-  "status": "pending",
-  "priority": "high",
-  "dueDate": "2024-02-01T00:00:00.000Z"
-}
-```
-
-#### 4. Get all tasks
-```bash
-GET /api/tasks
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-#### 5. Create a subtask
-```bash
-POST /api/tasks/{taskId}/subtasks
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-Content-Type: application/json
-
-{
-  "title": "Design wireframes",
-  "description": "Create initial wireframe designs",
-  "completed": false
-}
-```
-
-#### 6. Update subtask to completed
-```bash
-PUT /api/subtasks/{subtaskId}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-Content-Type: application/json
-
-{
-  "completed": true
-}
+Task Management API
+├── Authentication
+│   ├── Register User
+│   ├── Login
+│   └── Get Current User
+├── Tasks
+│   ├── Get All Tasks
+│   ├── Get Task by ID
+│   ├── Create Task
+│   ├── Update Task
+│   └── Delete Task
+└── Subtasks
+    ├── Get All Subtasks for Task
+    ├── Get Subtask by ID
+    ├── Create Subtask
+    ├── Update Subtask
+    └── Delete Subtask
 ```
 
 ---
 
-## Notes for Frontend Developers
+## Important Notes for Frontend Developers
 
-1. **Token Storage**: Store the JWT token securely (e.g., in localStorage, sessionStorage, or httpOnly cookies) and include it in all authenticated requests.
+### 1. Authentication Flow
 
-2. **Token Refresh**: Tokens expire after 24 hours. Implement token refresh logic or prompt users to login again when receiving `401 Unauthorized` responses.
+```javascript
+// 1. Register or Login to get token
+const response = await fetch('http://localhost:3000/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, password })
+});
 
-3. **Date Format**: All dates should be sent and received in ISO 8601 format (e.g., `"2024-01-20T00:00:00.000Z"`).
+const { data } = await response.json();
+const token = data.token;
 
-4. **Status Values**: When sending status values, you can use either `"in-progress"` (kebab-case) or `"in_progress"` (snake_case) - both are accepted, but responses will always return `"in_progress"`.
+// 2. Store token securely (localStorage, sessionStorage, or httpOnly cookie)
+localStorage.setItem('authToken', token);
 
-5. **User Isolation**: Users can only access their own tasks and subtasks. Attempting to access another user's resources will return `404 Not Found`.
+// 3. Include token in all protected requests
+const tasksResponse = await fetch('http://localhost:3000/api/tasks', {
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+  }
+});
+```
 
-6. **Cascading Deletes**: When a task is deleted, all its subtasks are automatically deleted.
+### 2. Error Handling
 
-7. **CORS**: The API has CORS enabled, so you can make requests from any origin.
+Always check both the HTTP status code AND the `success` field:
 
-8. **Error Handling**: Always check the `success` field in responses. Even with a `200` status code, check for `success: false` in the response body.
+```javascript
+const response = await fetch(url, options);
+const data = await response.json();
+
+if (!response.ok || !data.success) {
+  // Handle error
+  console.error(data.error || data.message);
+  // Show user-friendly error message
+}
+```
+
+### 3. Date Format
+
+- **Send dates in ISO 8601 format:** `"2024-01-20T00:00:00.000Z"`
+- **Dates are returned in ISO 8601 format**
+- Use JavaScript `Date` objects or date libraries (moment.js, date-fns) for parsing
+
+### 4. Status Values
+
+- You can send `"in-progress"` (kebab-case) in requests
+- Response will always return `"in_progress"` (snake_case)
+- Handle both formats in your frontend if needed
+
+### 5. User Isolation
+
+- Users can only access their own tasks and subtasks
+- Attempting to access another user's resources returns `404 Not Found`
+- The `userId` is automatically set from the JWT token, so users can't create tasks for others
+
+### 6. Cascading Deletes
+
+- When a task is deleted, all its subtasks are automatically deleted
+- There's no need to delete subtasks manually before deleting a task
+
+### 7. CORS
+
+- The API has CORS enabled for all origins
+- No additional CORS configuration needed in the frontend
+
+### 8. Request Headers
+
+Always include these headers for POST/PUT requests:
+```javascript
+headers: {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${token}` // For protected endpoints
+}
+```
+
+### 9. Response Structure
+
+- **List endpoints** (GET all tasks/subtasks) include a `count` field
+- **Single resource endpoints** return the resource in `data`
+- Always check `success: true` before using the `data`
+
+### 10. Optional Fields in Update Requests
+
+For PUT requests, only send the fields you want to update:
+```javascript
+// Update only status
+await fetch(`/api/tasks/${taskId}`, {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({ status: 'completed' })
+});
+```
+
+---
+
+## Example Frontend Integration Code
+
+### React/JavaScript Example
+
+```javascript
+// api.js - API service file
+const API_BASE_URL = 'http://localhost:3000/api';
+
+// Helper function for authenticated requests
+async function authenticatedFetch(endpoint, options = {}) {
+  const token = localStorage.getItem('authToken');
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+  
+  const data = await response.json();
+  
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || data.message || 'Request failed');
+  }
+  
+  return data;
+}
+
+// Authentication
+export const authAPI = {
+  register: async (userData) => {
+    const data = await authenticatedFetch('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+    
+    // Store token
+    if (data.data.token) {
+      localStorage.setItem('authToken', data.data.token);
+    }
+    
+    return data;
+  },
+  
+  login: async (email, password) => {
+    const data = await authenticatedFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    
+    // Store token
+    if (data.data.token) {
+      localStorage.setItem('authToken', data.data.token);
+    }
+    
+    return data;
+  },
+  
+  getCurrentUser: async () => {
+    return await authenticatedFetch('/auth/me');
+  },
+};
+
+// Tasks
+export const tasksAPI = {
+  getAll: async () => {
+    return await authenticatedFetch('/tasks');
+  },
+  
+  getById: async (id) => {
+    return await authenticatedFetch(`/tasks/${id}`);
+  },
+  
+  create: async (taskData) => {
+    return await authenticatedFetch('/tasks', {
+      method: 'POST',
+      body: JSON.stringify(taskData),
+    });
+  },
+  
+  update: async (id, updateData) => {
+    return await authenticatedFetch(`/tasks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+  },
+  
+  delete: async (id) => {
+    return await authenticatedFetch(`/tasks/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Subtasks
+export const subtasksAPI = {
+  getByTaskId: async (taskId) => {
+    return await authenticatedFetch(`/tasks/${taskId}/subtasks`);
+  },
+  
+  getById: async (id) => {
+    return await authenticatedFetch(`/subtasks/${id}`);
+  },
+  
+  create: async (taskId, subtaskData) => {
+    return await authenticatedFetch(`/tasks/${taskId}/subtasks`, {
+      method: 'POST',
+      body: JSON.stringify(subtaskData),
+    });
+  },
+  
+  update: async (id, updateData) => {
+    return await authenticatedFetch(`/subtasks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+  },
+  
+  delete: async (id) => {
+    return await authenticatedFetch(`/subtasks/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+```
 
 ---
 
 ## Support
 
-For questions or issues, please contact the backend team or refer to the project repository.
+For questions, issues, or clarifications about the API:
 
+1. Check this documentation first
+2. Test endpoints using Postman with the examples provided
+3. Contact the backend team
+4. Refer to the project repository
+
+---
+
+## Changelog
+
+### Version 1.0 (Current)
+- Initial API documentation
+- All endpoints documented
+- Postman examples included
+- Frontend integration examples provided
+
+---
+
+**End of Documentation**
